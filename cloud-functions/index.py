@@ -57,6 +57,7 @@ HTML_CONTENT = """
             sessionId = Date.now().toString(36) + Math.random().toString(36).slice(2);
         }
         let sending = false;
+        const FETCH_TIMEOUT_MS = 120000;  // 请求超时上限 2 分钟，AI 回复较慢，可按需调整
 
         function escapeHtml(s) {
             const div = document.createElement('div');
@@ -75,36 +76,66 @@ HTML_CONTENT = """
             chatBox.innerHTML += `<div class="msg user">你: ${escapeHtml(text)}</div>`;
             input.value = '';
 
-            chatBox.innerHTML += `<div class="msg ai" id="loading">AI 正在思考...</div>`;
+            // 直接持有"AI 正在思考..."元素的引用，结束时更新它，
+            // 而不是靠 id 查找（连续发送时 id 会重复，getElementById 会命中旧消息，
+            // 导致新的"思考中"永远没人更新——之前页面假死的原因）
+            const loadingEl = document.createElement('div');
+            loadingEl.className = 'msg ai';
+            loadingEl.innerText = 'AI 正在思考...';
+            chatBox.appendChild(loadingEl);
             chatBox.scrollTop = chatBox.scrollHeight;
+
+            // 超时控制：到时间自动中断 fetch，避免页面无限期停在"AI 正在思考..."
+            const controller = new AbortController();
+            const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
 
             let reply = '出错了，请稍后重试';
             try {
                 const response = await fetch('/chat', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ message: text, session_id: sessionId })
+                    body: JSON.stringify({ message: text, session_id: sessionId }),
+                    signal: controller.signal
                 });
-                const data = await response.json();
-                if (data.session_id) sessionId = data.session_id;
-                reply = data.reply;
-            } catch (e) {
-                reply = '请求失败: ' + e.message;
-            } finally {
-                sending = false;
-            }
 
-            const loadingEl = document.getElementById('loading');
-            if (loadingEl) loadingEl.innerText = `AI: ${reply}`;
-            chatBox.scrollTop = chatBox.scrollHeight;
+                // 先检查 HTTP 状态码：非 200 时响应体通常不是 JSON
+                //（例如平台网关返回的 HTML 错误页），此时不要调用 response.json()，
+                // 而是读出文本展示，方便排查
+                if (!response.ok) {
+                    let body = '';
+                    try { body = (await response.text()).slice(0, 300); } catch (e) { body = ''; }
+                    reply = `HTTP 错误 ${response.status} ${response.statusText}: ${body}`;
+                } else {
+                    const data = await response.json();
+                    if (data.session_id) sessionId = data.session_id;
+                    reply = data.reply || '(后端未返回内容)';
+                }
+            } catch (e) {
+                // AbortError = 超时主动中断；其余异常（断网、JSON 解析失败等）一并兜底
+                reply = e.name === 'AbortError'
+                    ? `请求超时（${FETCH_TIMEOUT_MS / 1000} 秒无响应），请检查网络或稍后重试`
+                    : `请求失败: ${e.message}`;
+            } finally {
+                // 无论成功、失败还是超时，都结束"思考中"状态，避免页面假死
+                clearTimeout(timer);
+                sending = false;
+                loadingEl.innerText = `AI: ${reply}`;
+                chatBox.scrollTop = chatBox.scrollHeight;
+            }
         }
 
         async function clearChat() {
-            await fetch('/clear', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ session_id: sessionId })
-            });
+            try {
+                const response = await fetch('/clear', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ session_id: sessionId })
+                });
+                if (!response.ok) throw new Error(`HTTP ${response.status} ${response.statusText}`);
+            } catch (e) {
+                alert('清空对话失败: ' + e.message);
+                return;
+            }
             document.getElementById('chat-box').innerHTML = '';
             document.getElementById('user-input').value = '';
         }
