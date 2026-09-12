@@ -20,11 +20,9 @@ MAX_HISTORY = 20    # 每个会话最多保留最近 20 条消息（约 10 轮�
 MAX_SESSIONS = 100  # 最多保留 100 个会话，防止内存无限增长
 
 class ChatRequest(BaseModel):
-    message: str
+    message: str = ""     # 清空会话请求时不需要
     session_id: str = ""  # 为空时后端自动生成
-
-class ClearRequest(BaseModel):
-    session_id: str
+    clear: bool = False   # true 时清空该会话历史，与聊天共用 POST /
 
 # 网页代码直接写在这里
 HTML_CONTENT = """
@@ -91,7 +89,7 @@ HTML_CONTENT = """
 
             let reply = '出错了，请稍后重试';
             try {
-                const response = await fetch('/chat', {
+                const response = await fetch('/', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ message: text, session_id: sessionId }),
@@ -126,10 +124,10 @@ HTML_CONTENT = """
 
         async function clearChat() {
             try {
-                const response = await fetch('/clear', {
+                const response = await fetch('/', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ session_id: sessionId })
+                    body: JSON.stringify({ clear: true, session_id: sessionId })
                 });
                 if (!response.ok) throw new Error(`HTTP ${response.status} ${response.statusText}`);
             } catch (e) {
@@ -150,8 +148,13 @@ async def serve_index():
     return HTML_CONTENT
 
 # 聊天接口
-@app.post("/chat")
+@app.post("/")
 async def chat(request: ChatRequest):
+    # 清空会话请求：只删历史记录，不调用模型
+    if request.clear:
+        chat_histories.pop(request.session_id, None)
+        return {"ok": True}
+
     session_id = request.session_id or str(uuid.uuid4())
     try:
         history = chat_histories.setdefault(session_id, [])
@@ -178,10 +181,3 @@ async def chat(request: ChatRequest):
         return {"reply": reply, "session_id": session_id}
     except Exception as e:
         return {"reply": f"出错了: {str(e)}", "session_id": session_id}
-
-
-# 清空指定会话的历史记录
-@app.post("/clear")
-async def clear(request: ClearRequest):
-    chat_histories.pop(request.session_id, None)
-    return {"ok": True}
