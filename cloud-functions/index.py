@@ -3,7 +3,6 @@ from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
 from openai import OpenAI
 import os
-import uuid
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -14,15 +13,10 @@ client = OpenAI(
     base_url="https://api.deepseek.com"
 )
 
-# 多轮对话记忆：session_id -> 历史消息列表
-chat_histories = {}
-MAX_HISTORY = 20    # 每个会话最多保留最近 20 条消息（约 10 轮对话）
-MAX_SESSIONS = 100  # 最多保留 100 个会话，防止内存无限增长
-
+# 多轮对话记忆改由前端保存：每次请求前端把完整历史一起传来，
+# 后端无状态、不存储任何会话数据（EdgeOne 云函数实例间不共享内存）
 class ChatRequest(BaseModel):
-    message: str = ""     # 清空会话请求时不需要
-    session_id: str = ""  # 为空时后端自动生成
-    clear: bool = False   # true 时清空该会话历史，与聊天共用 POST /
+    messages: list = []  # 前端传来的对话历史：[{role, content}, ...]
 
 # 网页代码直接写在这里
 HTML_CONTENT = """
@@ -49,11 +43,9 @@ HTML_CONTENT = """
     <button onclick="clearChat()">清空对话</button>
 
     <script>
-        // 会话 ID：后端用它记住多轮对话
-        let sessionId = '';
-        try { sessionId = crypto.randomUUID(); } catch (e) {
-            sessionId = Date.now().toString(36) + Math.random().toString(36).slice(2);
-        }
+        // 多轮对话记忆：历史保存在前端这个数组里，每次请求完整发给后端
+        let messages = [];
+        const MAX_HISTORY = 20;  // 最多携带最近 20 条历史（约 10 轮），防止请求无限变大
         let sending = false;
         const FETCH_TIMEOUT_MS = 120000;  // 请求超时上限 2 分钟，AI 回复较慢，可按需调整
 
@@ -84,15 +76,19 @@ HTML_CONTENT = """
             chatBox.scrollTop = chatBox.scrollHeight;
 
             // 超时控制：到时间自动中断 fetch，避免页面无限期停在"AI 正在思考..."
+            // 新问题先记进历史，再连同之前的完整历史一起发给后端
+            messages.push({ role: 'user', content: text });
+
             const controller = new AbortController();
             const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
 
             let reply = '出错了，请稍后重试';
+            let ok = false;  // 是否真正拿到 AI 回复（决定历史怎么记录）
             try {
                 const response = await fetch('/', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ message: text, session_id: sessionId }),
+                    body: JSON.stringify({ messages: messages.slice(-MAX_HISTORY) }),
                     signal: controller.signal
                 });
 
@@ -105,8 +101,8 @@ HTML_CONTENT = """
                     reply = `HTTP 错误 ${response.status} ${response.statusText}: ${body}`;
                 } else {
                     const data = await response.json();
-                    if (data.session_id) sessionId = data.session_id;
                     reply = data.reply || '(后端未返回内容)';
+                    ok = true;
                 }
             } catch (e) {
                 // AbortError = 超时主动中断；其余异常（断网、JSON 解析失败等）一并兜底
@@ -120,20 +116,19 @@ HTML_CONTENT = """
                 loadingEl.innerText = `AI: ${reply}`;
                 chatBox.scrollTop = chatBox.scrollHeight;
             }
+
+            // 拿到回复才把 AI 回答写进历史；失败则撤掉刚才的问题，
+            // 保证历史一问一答成对，下次发给 DeepSeek 时格式正确
+            if (ok) {
+                messages.push({ role: 'assistant', content: reply });
+            } else {
+                messages.pop();
+            }
         }
 
-        async function clearChat() {
-            try {
-                const response = await fetch('/', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ clear: true, session_id: sessionId })
-                });
-                if (!response.ok) throw new Error(`HTTP ${response.status} ${response.statusText}`);
-            } catch (e) {
-                alert('清空对话失败: ' + e.message);
-                return;
-            }
+        function clearChat() {
+            // 历史就在前端的 messages 数组里：清掉数组和页面即可，无需请求后端
+            messages = [];
             document.getElementById('chat-box').innerHTML = '';
             document.getElementById('user-input').value = '';
         }
@@ -147,37 +142,17 @@ HTML_CONTENT = """
 async def serve_index():
     return HTML_CONTENT
 
-# 聊天接口
+# 聊天接口：无状态，前端传来的完整历史原样转发给 DeepSeek
 @app.post("/")
 async def chat(request: ChatRequest):
-    # 清空会话请求：只删历史记录，不调用模型
-    if request.clear:
-        chat_histories.pop(request.session_id, None)
-        return {"ok": True}
-
-    session_id = request.session_id or str(uuid.uuid4())
     try:
-        history = chat_histories.setdefault(session_id, [])
-        history.append({"role": "user", "content": request.message})
-
         response = client.chat.completions.create(
             model="deepseek-chat",
             messages=[
                 {"role": "system", "content": "你是一个乐于助人的AI助手。"}
-            ] + history
+            ] + request.messages
         )
         reply = response.choices[0].message.content
-        history.append({"role": "assistant", "content": reply})
-
-        # 只保留最近 N 条消息，避免历史越来越长
-        if len(history) > MAX_HISTORY:
-            del history[:-MAX_HISTORY]
-
-        # 会话太多时丢弃最旧的会话
-        if len(chat_histories) > MAX_SESSIONS:
-            for old in list(chat_histories)[:-MAX_SESSIONS]:
-                chat_histories.pop(old, None)
-
-        return {"reply": reply, "session_id": session_id}
+        return {"reply": reply}
     except Exception as e:
-        return {"reply": f"出错了: {str(e)}", "session_id": session_id}
+        return {"reply": f"出错了: {str(e)}"}
