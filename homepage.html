@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Nancy（李姝昀）的个人主页 — 复旦大学数字经济学硕士在读，金融与数据研究爱好者">
+  <title>Nancy · 李姝昀 | 个人主页</title>
+
+  <!-- 提前读取主题设置，避免页面加载时闪烁 -->
+  <script>
+    (function () {
+      var saved = localStorage.getItem('theme');
+      var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      var theme = saved || (prefersDark ? 'dark' : 'light');
+      document.documentElement.setAttribute('data-theme', theme);
+    })();
+  </script>
+
+  <style>
+    /* ---------- 主题变量 ---------- */
+    :root {
+      --bg: #f6f8fa;
+      --card: #ffffff;
+      --text: #1f2328;
+      --muted: #57606a;
+      --accent: #0969da;
+      --border: rgba(0, 0, 0, 0.08);
+      --tag-bg: rgba(9, 105, 218, 0.08);
+      --shadow: 0 1px 3px rgba(0, 0, 0, 0.06), 0 4px 16px rgba(0, 0, 0, 0.04);
+    }
+
+    [data-theme="dark"] {
+      --bg: #0d1117;
+      --card: #161b22;
+      --text: #e6edf3;
+      --muted: #8b949e;
+      --accent: #58a6ff;
+      --border: rgba(255, 255, 255, 0.1);
+      --tag-bg: rgba(88, 166, 255, 0.12);
+      --shadow: 0 1px 3px rgba(0, 0, 0, 0.4), 0 4px 16px rgba(0, 0, 0, 0.25);
+    }
+
+    /* ---------- 基础 ---------- */
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+                   "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.7;
+      transition: background 0.3s ease, color 0.3s ease;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .container {
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 0 24px 64px;
+    }
+
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    /* ---------- 主题切换按钮 ---------- */
+    #theme-toggle {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      width: 42px;
+      height: 42px;
+      border: 1px solid var(--border);
+      border-radius: 50%;
+      background: var(--card);
+      color: var(--text);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: var(--shadow);
+      transition: transform 0.2s ease, background 0.3s ease, color 0.3s ease;
+      z-index: 10;
+    }
+    #theme-toggle:hover { transform: scale(1.08); }
+    #theme-toggle svg { width: 20px; height: 20px; }
+
+    /* 深色模式下显示太阳（表示点击切回浅色），浅色模式下显示月亮 */
+    [data-theme="light"] .icon-sun { display: none; }
+    [data-theme="dark"] .icon-moon { display: none; }
+
+    /* ---------- 头部 ---------- */
+    header {
+      text-align: center;
+      padding: 88px 0 40px;
+    }
+
+    .avatar {
+      width: 96px;
+      height: 96px;
+      margin: 0 auto 24px;
+      border-radius: 28px;
+      background: linear-gradient(135deg, #0969da, #58a6ff);
+      color: #fff;
+      font-size: 44px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 8px 24px rgba(9, 105, 218, 0.35);
+      user-select: none;
+    }
+
+    h1 {
+      font-size: 2rem;
+      letter-spacing: 0.5px;
+      margin-bottom: 8px;
+    }
+
+    .tagline {
+      color: var(--muted);
+      font-size: 1.05rem;
+      margin-bottom: 20px;
+    }
+
+    .links { display: flex; justify-content: center; gap: 14px; flex-wrap: wrap; }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 18px;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      background: var(--card);
+      color: var(--text);
+      font-size: 0.92rem;
+      font-weight: 500;
+      box-shadow: var(--shadow);
+      transition: transform 0.2s ease, border-color 0.2s ease;
+    }
+    .btn:hover { text-decoration: none; transform: translateY(-2px); border-color: var(--accent); }
+    .btn svg { width: 16px; height: 16px; }
+
+    /* ---------- 通用区块 ---------- */
+    section { margin-bottom: 44px; }
+
+    h2 {
+      font-size: 1.25rem;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    h2::after {
+      content: "";
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 22px 24px;
+      box-shadow: var(--shadow);
+      transition: background 0.3s ease, border-color 0.3s ease;
+    }
+
+    .card p { color: var(--muted); }
+
+    /* ---------- 技能标签 ---------- */
+    .tags { display: flex; flex-wrap: wrap; gap: 10px; }
+
+    .tag {
+      padding: 6px 16px;
+      border-radius: 999px;
+      background: var(--tag-bg);
+      color: var(--accent);
+      font-size: 0.88rem;
+      font-weight: 500;
+      white-space: nowrap;
+    }
+
+    /* ---------- 经历卡片 ---------- */
+    .card-list { display: flex; flex-direction: column; gap: 14px; }
+
+    .card h3 { font-size: 1.02rem; margin-bottom: 4px; }
+    .card .meta {
+      font-size: 0.85rem;
+      color: var(--accent);
+      margin-bottom: 8px;
+      font-weight: 500;
+    }
+    .card:hover { border-color: var(--accent); }
+
+    /* ---------- 页脚 ---------- */
+    footer {
+      text-align: center;
+      color: var(--muted);
+      font-size: 0.88rem;
+      padding-top: 24px;
+      border-top: 1px solid var(--border);
+    }
+
+    /* ---------- 动效 ---------- */
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(14px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    header, section, footer { animation: fadeUp 0.6s ease both; }
+    section:nth-of-type(2) { animation-delay: 0.08s; }
+    section:nth-of-type(3) { animation-delay: 0.16s; }
+    section:nth-of-type(4) { animation-delay: 0.24s; }
+    footer { animation-delay: 0.3s; }
+
+    @media (prefers-reduced-motion: reduce) {
+      * { animation: none !important; transition: none !important; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- 深色 / 浅色模式切换 -->
+  <button id="theme-toggle" aria-label="切换深色 / 浅色模式" title="切换主题">
+    <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+    </svg>
+    <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="12" r="5"/>
+      <line x1="12" y1="1" x2="12" y2="3"/>
+      <line x1="12" y1="21" x2="12" y2="23"/>
+      <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
+      <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+      <line x1="1" y1="12" x2="3" y2="12"/>
+      <line x1="21" y1="12" x2="23" y2="12"/>
+      <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
+      <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+    </svg>
+  </button>
+
+  <div class="container">
+
+    <!-- 头部：名字 + 简介一句话 -->
+    <header>
+      <div class="avatar">李</div>
+      <h1>Nancy · 李姝昀</h1>
+      <p class="tagline">复旦大学 · 数字经济学硕士在读 · 用数据理解世界</p>
+      <div class="links">
+        <a class="btn" href="https://github.com/Nancy3329" target="_blank" rel="noopener noreferrer">
+          <svg viewBox="0 0 16 16" fill="currentColor">
+            <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"/>
+          </svg>
+          GitHub
+        </a>
+      </div>
+    </header>
+
+    <!-- 简介 -->
+    <section>
+      <h2>关于我</h2>
+      <div class="card">
+        <p>
+          我是李姝昀，复旦大学经济学院数字经济学硕士在读，本科就读国际经济与贸易专业（GPA 3.46 / 4.0）。
+          熟练使用 Python、Stata 与 Excel，具备数据分析与报告撰写能力，对金融与实证研究充满热情。
+          担任班长和团支书，善于沟通协作，期待在金融与研究领域持续成长。
+        </p>
+      </div>
+    </section>
+
+    <!-- 技能标签 -->
+    <section>
+      <h2>技能</h2>
+      <div class="tags">
+        <span class="tag">Python</span>
+        <span class="tag">Stata</span>
+        <span class="tag">Excel</span>
+        <span class="tag">数据分析</span>
+        <span class="tag">计量经济学</span>
+        <span class="tag">数学建模</span>
+        <span class="tag">报告撰写</span>
+        <span class="tag">团队协作</span>
+      </div>
+    </section>
+
+    <!-- 实习经历 -->
+    <section>
+      <h2>实习经历</h2>
+      <div class="card-list">
+        <div class="card">
+          <h3>📈 兴业证券</h3>
+          <div class="meta">投行实习</div>
+          <p>参与 IPO 底稿整理与核查工作，熟悉投行业务流程。</p>
+        </div>
+        <div class="card">
+          <h3>🚢 托克贸易</h3>
+          <div class="meta">外贸跟单</div>
+          <p>协助国际贸易业务的全流程跟踪与单据处理。</p>
+        </div>
+        <div class="card">
+          <h3>📊 招商平安资产</h3>
+          <div class="meta">不良资产尽调</div>
+          <p>参与不良资产项目尽职调查与评估分析。</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 荣誉与科研 -->
+    <section>
+      <h2>荣誉与科研</h2>
+      <div class="card-list">
+        <div class="card">
+          <h3>🏆 全国大学生数学建模竞赛</h3>
+          <div class="meta">国家级二等奖</div>
+          <p>以数据建模解决实际问题，锻炼了数学与编程的综合应用能力。</p>
+        </div>
+        <div class="card">
+          <h3>📝 经济学院优秀论文</h3>
+          <div class="meta">二等奖</div>
+          <p>独立完成经济研究论文，获得学院评审认可。</p>
+        </div>
+        <div class="card">
+          <h3>🔬 曦源项目 · 科研助理</h3>
+          <div class="meta">科研经历</div>
+          <p>参与科研项目并担任科研助理，负责数据收集、清洗与分析工作。</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 页脚 -->
+    <footer>
+      © 2026 Nancy · 李姝昀 · 用数据理解世界
+    </footer>
+  </div>
+
+  <script>
+    // 主题切换：在深色 / 浅色之间切换，并记住用户的选择
+    (function () {
+      var root = document.documentElement;
+      var toggle = document.getElementById('theme-toggle');
+
+      toggle.addEventListener('click', function () {
+        var next = root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+        root.setAttribute('data-theme', next);
+        localStorage.setItem('theme', next);
+      });
+    })();
+  </script>
+</body>
+</html>
