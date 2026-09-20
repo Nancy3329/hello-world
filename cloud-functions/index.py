@@ -25,6 +25,7 @@ HTML_CONTENT = """
 <head>
     <meta charset="UTF-8">
     <title>我的第一个 AI Agent</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🤖</text></svg>">
     <style>
         /* ---------- 可爱配色：浅色 / 深色自动适配 ---------- */
         :root {
